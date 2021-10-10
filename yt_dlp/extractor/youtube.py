@@ -2650,6 +2650,7 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
 
             tbr = float_or_none(
                 fmt.get('averageBitrate') or fmt.get('bitrate'), 1000)
+
             dct = {
                 'full': json.dumps(fmt),
                 'asr': int_or_none(fmt.get('audioSampleRate')),
@@ -2703,6 +2704,16 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
         for sd in streaming_data:
             hls_manifest_url = get_hls and sd.get('hlsManifestUrl')
             if hls_manifest_url:
+                if self.get_param('youtube_print_hls_manifest', False):
+                    dct = {
+                        'format_id': 0,
+                        'url': hls_manifest_url,
+                        'hls_manifest': True,
+                    }
+                    yield dct
+                    if self.get_param('youtube_only_print_hls_manifest', False):
+                        continue
+                    
                 for f in self._extract_m3u8_formats(hls_manifest_url, video_id, 'mp4', fatal=False):
                     itag = self._search_regex(
                         r'/itag/(\d+)', f['url'], 'itag', default=None)
@@ -2712,6 +2723,7 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
                         f['format_id'] = itag
                         itags.append(itag)
                     f['quality'] = guess_quality(f)
+                    f['full'] = '{"mimeType": "application/vnd.apple.mpegurl"}'
                     yield f
 
             dash_manifest_url = get_dash and sd.get('dashManifestUrl')
