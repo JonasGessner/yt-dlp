@@ -19,6 +19,7 @@ import shlex
 import shutil
 import socket
 import struct
+import subprocess
 import sys
 import tokenize
 import urllib
@@ -159,6 +160,14 @@ except ImportError:
         compat_pycrypto_AES = None
 
 
+def windows_enable_vt_mode():  # TODO: Do this the proper way https://bugs.python.org/issue30075
+    if compat_os_name != 'nt':
+        return
+    startupinfo = subprocess.STARTUPINFO()
+    startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+    subprocess.Popen('', shell=True, startupinfo=startupinfo)
+
+
 #  Deprecated
 
 compat_basestring = str
@@ -281,5 +290,6 @@ __all__ = [
     'compat_xml_parse_error',
     'compat_xpath',
     'compat_zip',
+    'windows_enable_vt_mode',
     'workaround_optparse_bug9161',
 ]
