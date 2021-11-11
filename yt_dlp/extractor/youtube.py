@@ -2564,6 +2564,7 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
                         'format_id': 0,
                         'url': hls_manifest_url,
                         'hls_manifest': True,
+                        'full': '{"mimeType": "application/vnd.apple.mpegurl"}',
                     }
                     yield dct
                     if self.get_param('youtube_only_print_hls_manifest', False):
