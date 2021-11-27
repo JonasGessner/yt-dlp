@@ -889,7 +889,10 @@ from .ndr import (
     NJoyEmbedIE,
 )
 from .ndtv import NDTVIE
-from .nebula import NebulaIE
+from .nebula import (
+    NebulaIE,
+    NebulaCollectionIE,
+)
 from .nerdcubed import NerdCubedFeedIE
 from .netzkino import NetzkinoIE
 from .neteasemusic import (
@@ -943,7 +946,10 @@ from .niconico import (
     NicovideoSearchIE,
     NicovideoSearchURLIE,
 )
-from .ninecninemedia import NineCNineMediaIE
+from .ninecninemedia import (
+    NineCNineMediaIE,
+    CPTwentyFourIE,
+)
 from .ninegag import NineGagIE
 from .ninenow import NineNowIE
 from .nintendo import NintendoIE
