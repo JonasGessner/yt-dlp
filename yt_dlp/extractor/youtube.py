@@ -2586,6 +2586,9 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
                 f['format_id'] = itag
                 itags[itag] = proto
 
+            if proto == 'hls':
+                f['full'] = '{"mimeType": "application/vnd.apple.mpegurl"}'
+
             f['quality'] = next((
                 q(qdict[val])
                 for val, qdict in ((f.get('format_id', '').split('-')[0], itag_qualities), (f.get('height'), res_qualities))
@@ -2597,7 +2600,7 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
             if hls_manifest_url:
                 if self.get_param('youtube_print_hls_manifest', False):
                     dct = {
-                        'format_id': 0,
+                        'format_id': '0',
                         'url': hls_manifest_url,
                         'hls_manifest': True,
                         'full': '{"mimeType": "application/vnd.apple.mpegurl"}',
