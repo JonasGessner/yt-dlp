@@ -636,7 +636,11 @@ from .iprima import (
     IPrimaIE,
     IPrimaCNNIE
 )
-from .iqiyi import IqiyiIE
+from .iqiyi import (
+    IqiyiIE,
+    IqIE,
+    IqAlbumIE
+)
 from .ir90tv import Ir90TvIE
 from .itv import (
     ITVIE,
@@ -1299,6 +1303,12 @@ from .rtl2 import (
     RTL2YouIE,
     RTL2YouSeriesIE,
 )
+from .rtnews import (
+    RTNewsIE,
+    RTDocumentryIE,
+    RTDocumentryPlaylistIE,
+    RuptlyIE,
+)
 from .rtp import RTPIE
 from .rtrfm import RTRFMIE
 from .rts import RTSIE
@@ -1672,6 +1682,10 @@ from .tvnow import (
     TVNowSeasonIE,
     TVNowAnnualIE,
     TVNowShowIE,
+)
+from .tvopengr import (
+    TVOpenGrWatchIE,
+    TVOpenGrEmbedIE,
 )
 from .tvp import (
     TVPEmbedIE,
