@@ -1,5 +1,3 @@
-from __future__ import unicode_literals
-
 import hashlib
 import hmac
 import re
@@ -157,8 +155,6 @@ class ABCIE(InfoExtractor):
                 'format_id': format_id
             })
 
-        self._sort_formats(formats)
-
         return {
             'id': video_id,
             'title': self._og_search_title(webpage),
@@ -213,7 +209,7 @@ class ABCIViewIE(InfoExtractor):
                 'hdnea': token,
             })
 
-        for sd in ('720', 'sd', 'sd-low'):
+        for sd in ('1080', '720', 'sd', 'sd-low'):
             sd_url = try_get(
                 stream, lambda x: x['streams']['hls'][sd], compat_str)
             if not sd_url:
@@ -223,7 +219,6 @@ class ABCIViewIE(InfoExtractor):
                 entry_protocol='m3u8_native', m3u8_id='hls', fatal=False)
             if formats:
                 break
-        self._sort_formats(formats)
 
         subtitles = {}
         src_vtt = stream.get('captions', {}).get('src-vtt')
@@ -300,7 +295,7 @@ class ABCIViewShowSeriesIE(InfoExtractor):
             unescapeHTML(webpage_data).encode('utf-8').decode('unicode_escape'), show_id)
         video_data = video_data['route']['pageData']['_embedded']
 
-        highlight = try_get(video_data, lambda x: ['highlightVideo']['shareUrl'])
+        highlight = try_get(video_data, lambda x: x['highlightVideo']['shareUrl'])
         if not self._yes_playlist(show_id, bool(highlight), video_label='highlight video'):
             return self.url_result(highlight, ie=ABCIViewIE.ie_key())
 

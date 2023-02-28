@@ -24,10 +24,13 @@ cookies
 
 *.3gp
 *.ape
+*.ass
 *.avi
 *.desktop
+*.f4v
 *.flac
 *.flv
+*.gif
 *.jpeg
 *.jpg
 *.m4a
@@ -37,6 +40,8 @@ cookies
 *.mov
 *.mp3
 *.mp4
+*.mpga
+*.oga
 *.ogg
 *.opus
 *.png
@@ -44,6 +49,7 @@ cookies
 *.srt
 *.swf
 *.swp
+*.tt
 *.ttml
 *.url
 *.vtt
@@ -66,6 +72,7 @@ dist/
 zip/
 tmp/
 venv/
+.venv/
 completions/
 
 # Misc
@@ -81,6 +88,8 @@ updates_key.pem
 *.egg-info
 .tox
 *.class
+*.isorted
+*.stackdump
 
 # Generated
 AUTHORS
@@ -92,7 +101,7 @@ README.txt
 *.tar.gz
 *.zsh
 *.spec
-test/testdata/player-*.js
+test/testdata/sigs/player-*.js
 
 # Binary
 /youtube-dl
@@ -106,11 +115,11 @@ yt-dlp.zip
 *.iml
 .vscode
 *.sublime-*
+*.code-workspace
 
 # Lazy extractors
 */extractor/lazy_extractors.py
 
 # Plugins
-ytdlp_plugins/extractor/*
-!ytdlp_plugins/extractor/__init__.py
-!ytdlp_plugins/extractor/sample.py
+ytdlp_plugins/
+yt-dlp-plugins

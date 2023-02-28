@@ -1,21 +1,21 @@
 #!/usr/bin/env python3
 
-from __future__ import unicode_literals
-
 # Allow direct execution
 import os
 import sys
 import unittest
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import io
+
+import contextlib
 import re
 import string
+import urllib.request
 
 from test.helper import FakeYDL, is_download_test
 from yt_dlp.extractor import YoutubeIE
 from yt_dlp.jsinterp import JSInterpreter
-from yt_dlp.compat import compat_str, compat_urlretrieve
 
 _SIG_TESTS = [
     (
@@ -86,6 +86,58 @@ _NSIG_TESTS = [
         'https://www.youtube.com/s/player/8040e515/player_ias.vflset/en_US/base.js',
         'wvOFaY-yjgDuIEg5', 'HkfBFDHmgw4rsw',
     ),
+    (
+        'https://www.youtube.com/s/player/e06dea74/player_ias.vflset/en_US/base.js',
+        'AiuodmaDDYw8d3y4bf', 'ankd8eza2T6Qmw',
+    ),
+    (
+        'https://www.youtube.com/s/player/5dd88d1d/player-plasma-ias-phone-en_US.vflset/base.js',
+        'kSxKFLeqzv_ZyHSAt', 'n8gS8oRlHOxPFA',
+    ),
+    (
+        'https://www.youtube.com/s/player/324f67b9/player_ias.vflset/en_US/base.js',
+        'xdftNy7dh9QGnhW', '22qLGxrmX8F1rA',
+    ),
+    (
+        'https://www.youtube.com/s/player/4c3f79c5/player_ias.vflset/en_US/base.js',
+        'TDCstCG66tEAO5pR9o', 'dbxNtZ14c-yWyw',
+    ),
+    (
+        'https://www.youtube.com/s/player/c81bbb4a/player_ias.vflset/en_US/base.js',
+        'gre3EcLurNY2vqp94', 'Z9DfGxWP115WTg',
+    ),
+    (
+        'https://www.youtube.com/s/player/1f7d5369/player_ias.vflset/en_US/base.js',
+        'batNX7sYqIJdkJ', 'IhOkL_zxbkOZBw',
+    ),
+    (
+        'https://www.youtube.com/s/player/009f1d77/player_ias.vflset/en_US/base.js',
+        '5dwFHw8aFWQUQtffRq', 'audescmLUzI3jw',
+    ),
+    (
+        'https://www.youtube.com/s/player/dc0c6770/player_ias.vflset/en_US/base.js',
+        '5EHDMgYLV6HPGk_Mu-kk', 'n9lUJLHbxUI0GQ',
+    ),
+    (
+        'https://www.youtube.com/s/player/113ca41c/player_ias.vflset/en_US/base.js',
+        'cgYl-tlYkhjT7A', 'hI7BBr2zUgcmMg',
+    ),
+    (
+        'https://www.youtube.com/s/player/c57c113c/player_ias.vflset/en_US/base.js',
+        'M92UUMHa8PdvPd3wyM', '3hPqLJsiNZx7yA',
+    ),
+    (
+        'https://www.youtube.com/s/player/5a3b6271/player_ias.vflset/en_US/base.js',
+        'B2j7f_UPT4rfje85Lu_e', 'm5DmNymaGQ5RdQ',
+    ),
+    (
+        'https://www.youtube.com/s/player/7a062b77/player_ias.vflset/en_US/base.js',
+        'NRcE3y3mVtm_cV-W', 'VbsCYUATvqlt5w',
+    ),
+    (
+        'https://www.youtube.com/s/player/dac945fd/player_ias.vflset/en_US/base.js',
+        'o8BkRxXhuYsBCWi6RplPdP', '3Lx32v_hmzTm6A',
+    ),
 ]
 
 
@@ -93,6 +145,7 @@ _NSIG_TESTS = [
 class TestPlayerInfo(unittest.TestCase):
     def test_youtube_extract_player_info(self):
         PLAYER_URLS = (
+            ('https://www.youtube.com/s/player/4c3f79c5/player_ias.vflset/en_US/base.js', '4c3f79c5'),
             ('https://www.youtube.com/s/player/64dddad9/player_ias.vflset/en_US/base.js', '64dddad9'),
             ('https://www.youtube.com/s/player/64dddad9/player_ias.vflset/fr_FR/base.js', '64dddad9'),
             ('https://www.youtube.com/s/player/64dddad9/player-plasma-ias-phone-en_US.vflset/base.js', '64dddad9'),
@@ -116,9 +169,14 @@ class TestPlayerInfo(unittest.TestCase):
 class TestSignature(unittest.TestCase):
     def setUp(self):
         TEST_DIR = os.path.dirname(os.path.abspath(__file__))
-        self.TESTDATA_DIR = os.path.join(TEST_DIR, 'testdata')
+        self.TESTDATA_DIR = os.path.join(TEST_DIR, 'testdata/sigs')
         if not os.path.exists(self.TESTDATA_DIR):
             os.mkdir(self.TESTDATA_DIR)
+
+    def tearDown(self):
+        with contextlib.suppress(OSError):
+            for f in os.listdir(self.TESTDATA_DIR):
+                os.remove(f)
 
 
 def t_factory(name, sig_func, url_pattern):
@@ -132,8 +190,8 @@ def t_factory(name, sig_func, url_pattern):
             fn = os.path.join(self.TESTDATA_DIR, basename)
 
             if not os.path.exists(fn):
-                compat_urlretrieve(url, fn)
-            with io.open(fn, encoding='utf-8') as testf:
+                urllib.request.urlretrieve(url, fn)
+            with open(fn, encoding='utf-8') as testf:
                 jscode = testf.read()
             self.assertEqual(sig_func(jscode, sig_input), expected_sig)
 
@@ -145,7 +203,7 @@ def t_factory(name, sig_func, url_pattern):
 def signature(jscode, sig_input):
     func = YoutubeIE(FakeYDL())._parse_sig_js(jscode)
     src_sig = (
-        compat_str(string.printable[:sig_input])
+        str(string.printable[:sig_input])
         if isinstance(sig_input, int) else sig_input)
     return func(src_sig)
 

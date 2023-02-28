@@ -1,6 +1,3 @@
-# coding: utf-8
-from __future__ import unicode_literals
-
 import hashlib
 import itertools
 import re
@@ -10,6 +7,7 @@ from .common import InfoExtractor
 from ..compat import (
     compat_str,
     compat_urllib_parse_urlencode,
+    compat_urllib_parse_unquote
 )
 from .openload import PhantomJSwrapper
 from ..utils import (
@@ -17,6 +15,7 @@ from ..utils import (
     decode_packed_codes,
     ExtractorError,
     float_or_none,
+    format_field,
     get_element_by_id,
     get_element_by_attribute,
     int_or_none,
@@ -38,7 +37,7 @@ def md5_text(text):
     return hashlib.md5(text.encode('utf-8')).hexdigest()
 
 
-class IqiyiSDK(object):
+class IqiyiSDK:
     def __init__(self, target, ip, timestamp):
         self.target = target
         self.ip = ip
@@ -132,7 +131,7 @@ class IqiyiSDK(object):
         self.target = self.digit_sum(self.timestamp) + chunks[0] + compat_str(sum(ip))
 
 
-class IqiyiSDKInterpreter(object):
+class IqiyiSDKInterpreter:
     def __init__(self, sdk_code):
         self.sdk_code = sdk_code
 
@@ -239,9 +238,6 @@ class IqiyiIE(InfoExtractor):
         '18': 7,    # 1080p
     }
 
-    def _real_initialize(self):
-        self._login()
-
     @staticmethod
     def _rsa_fun(data):
         # public key extracted from http://static.iqiyi.com/js/qiyiV2/20160129180840/jobs/i18n/i18nIndex.js
@@ -250,12 +246,7 @@ class IqiyiIE(InfoExtractor):
 
         return ohdave_rsa_encrypt(data, e, N)
 
-    def _login(self):
-        username, password = self._get_login_info()
-
-        # No authentication to be performed
-        if not username:
-            return True
+    def _perform_login(self, username, password):
 
         data = self._download_json(
             'http://kylin.iqiyi.com/get_token', None,
@@ -394,7 +385,6 @@ class IqiyiIE(InfoExtractor):
 
             self._sleep(5, video_id)
 
-        self._sort_formats(formats)
         title = (get_element_by_id('widget-videotitle', webpage)
                  or clean_html(get_element_by_attribute('class', 'mod-play-tit', webpage))
                  or self._html_search_regex(r'<span[^>]+data-videochanged-title="word"[^>]*>([^<]+)</span>', webpage, 'title'))
@@ -431,6 +421,10 @@ class IqIE(InfoExtractor):
             'format': '500',
         },
         'expected_warnings': ['format is restricted']
+    }, {
+        # VIP-restricted video
+        'url': 'https://www.iq.com/play/mermaid-in-the-fog-2021-gbdpx13bs4',
+        'only_matching': True
     }]
     _BID_TAGS = {
         '100': '240P',
@@ -446,6 +440,7 @@ class IqIE(InfoExtractor):
         '1': 'zh_CN',
         '2': 'zh_TW',
         '3': 'en',
+        '4': 'kor',
         '18': 'th',
         '21': 'my',
         '23': 'vi',
@@ -457,8 +452,8 @@ class IqIE(InfoExtractor):
     _DASH_JS = '''
         console.log(page.evaluate(function() {
             var tvid = "%(tvid)s"; var vid = "%(vid)s"; var src = "%(src)s";
-            var dfp = "%(dfp)s"; var mode = "%(mode)s"; var lang = "%(lang)s"; var bid_list = %(bid_list)s;
-            var tm = new Date().getTime();
+            var uid = "%(uid)s"; var dfp = "%(dfp)s"; var mode = "%(mode)s"; var lang = "%(lang)s";
+            var bid_list = %(bid_list)s; var ut_list = %(ut_list)s; var tm = new Date().getTime();
             var cmd5x_func = %(cmd5x_func)s; var cmd5x_exporter = {}; cmd5x_func({}, cmd5x_exporter, {}); var cmd5x = cmd5x_exporter.cmd5x;
             var authKey = cmd5x(cmd5x('') + tm + '' + tvid);
             var k_uid = Array.apply(null, Array(32)).map(function() {return Math.floor(Math.random() * 15).toString(16)}).join('');
@@ -472,7 +467,7 @@ class IqIE(InfoExtractor):
                     'src': src,
                     'vt': 0,
                     'rs': 1,
-                    'uid': 0,
+                    'uid': uid,
                     'ori': 'pcw',
                     'ps': 1,
                     'k_uid': k_uid,
@@ -509,12 +504,14 @@ class IqIE(InfoExtractor):
                         'version': '10.0',
                         'dfp': dfp
                     }),
-                    'ut': 0, // TODO: Set ut param for VIP members
                 };
                 var enc_params = [];
                 for (var prop in query) {
                     enc_params.push(encodeURIComponent(prop) + '=' + encodeURIComponent(query[prop]));
                 }
+                ut_list.forEach(function(ut) {
+                    enc_params.push('ut=' + ut);
+                })
                 var dash_path = '/dash?' + enc_params.join('&'); dash_path += '&vf=' + cmd5x(dash_path);
                 dash_paths[bid] = dash_path;
             });
@@ -524,20 +521,23 @@ class IqIE(InfoExtractor):
     '''
 
     def _extract_vms_player_js(self, webpage, video_id):
-        player_js_cache = self._downloader.cache.load('iq', 'player_js')
+        player_js_cache = self.cache.load('iq', 'player_js')
         if player_js_cache:
             return player_js_cache
         webpack_js_url = self._proto_relative_url(self._search_regex(
             r'<script src="((?:https?)?//stc.iqiyipic.com/_next/static/chunks/webpack-\w+\.js)"', webpage, 'webpack URL'))
         webpack_js = self._download_webpage(webpack_js_url, video_id, note='Downloading webpack JS', errnote='Unable to download webpack JS')
-        webpack_map1, webpack_map2 = [self._parse_json(js_map, video_id, transform_source=js_to_json) for js_map in self._search_regex(
-            r'\(({[^}]*})\[\w+\][^\)]*\)\s*\+\s*["\']\.["\']\s*\+\s*({[^}]*})\[\w+\]\+["\']\.js', webpack_js, 'JS locations', group=(1, 2))]
-        for module_index in reversed(list(webpack_map2.keys())):
+        webpack_map = self._search_json(
+            r'["\']\s*\+\s*', webpack_js, 'JS locations', video_id,
+            contains_pattern=r'{\s*(?:\d+\s*:\s*["\'][\da-f]+["\']\s*,?\s*)+}',
+            end_pattern=r'\[\w+\]\+["\']\.js', transform_source=js_to_json)
+
+        for module_index in reversed(webpack_map):
             module_js = self._download_webpage(
-                f'https://stc.iqiyipic.com/_next/static/chunks/{webpack_map1.get(module_index, module_index)}.{webpack_map2[module_index]}.js',
+                f'https://stc.iqiyipic.com/_next/static/chunks/{module_index}.{webpack_map[module_index]}.js',
                 video_id, note=f'Downloading #{module_index} module JS', errnote='Unable to download module JS', fatal=False) or ''
             if 'vms request' in module_js:
-                self._downloader.cache.store('iq', 'player_js', module_js)
+                self.cache.store('iq', 'player_js', module_js)
                 return module_js
         raise ExtractorError('Unable to extract player JS')
 
@@ -546,11 +546,11 @@ class IqIE(InfoExtractor):
                                   self._extract_vms_player_js(webpage, video_id), 'signature function')
 
     def _update_bid_tags(self, webpage, video_id):
-        extracted_bid_tags = self._parse_json(
-            self._search_regex(
-                r'arguments\[1\][^,]*,\s*function\s*\([^\)]*\)\s*{\s*"use strict";?\s*var \w=({.+}})\s*,\s*\w\s*=\s*{\s*getNewVd',
-                self._extract_vms_player_js(webpage, video_id), 'video tags', default=''),
-            video_id, transform_source=js_to_json, fatal=False)
+        extracted_bid_tags = self._search_json(
+            r'function\s*\([^)]*\)\s*\{\s*"use strict";?\s*var \w\s*=\s*',
+            self._extract_vms_player_js(webpage, video_id), 'video tags', video_id,
+            contains_pattern=r'{\s*\d+\s*:\s*\{\s*nbid\s*:.+}\s*}',
+            end_pattern=r'\s*,\s*\w\s*=\s*\{\s*getNewVd', fatal=False, transform_source=js_to_json)
         if not extracted_bid_tags:
             return
         self._BID_TAGS = {
@@ -571,17 +571,38 @@ class IqIE(InfoExtractor):
         page_data = next_props['initialState']['play']
         video_info = page_data['curVideoInfo']
 
+        uid = traverse_obj(
+            self._parse_json(
+                self._get_cookie('I00002', '{}'), video_id, transform_source=compat_urllib_parse_unquote, fatal=False),
+            ('data', 'uid'), default=0)
+
+        if uid:
+            vip_data = self._download_json(
+                'https://pcw-api.iq.com/api/vtype', video_id, note='Downloading VIP data', errnote='Unable to download VIP data', query={
+                    'batch': 1,
+                    'platformId': 3,
+                    'modeCode': self._get_cookie('mod', 'intl'),
+                    'langCode': self._get_cookie('lang', 'en_us'),
+                    'deviceId': self._get_cookie('QC005', '')
+                }, fatal=False)
+            ut_list = traverse_obj(vip_data, ('data', 'all_vip', ..., 'vipType'), expected_type=str_or_none)
+        else:
+            ut_list = ['0']
+
         # bid 0 as an initial format checker
-        dash_paths = self._parse_json(PhantomJSwrapper(self).get(
-            url, html='<!DOCTYPE html>', video_id=video_id, note2='Executing signature code', jscode=self._DASH_JS % {
+        dash_paths = self._parse_json(PhantomJSwrapper(self, timeout=120_000).get(
+            url, note2='Executing signature code (this may take a couple minutes)',
+            html='<!DOCTYPE html>', video_id=video_id, jscode=self._DASH_JS % {
                 'tvid': video_info['tvId'],
                 'vid': video_info['vid'],
                 'src': traverse_obj(next_props, ('initialProps', 'pageProps', 'ptid'),
-                                    expected_type=str, default='01010031010018000000'),
+                                    expected_type=str, default='04022001010011000000'),
+                'uid': uid,
                 'dfp': self._get_cookie('dfp', ''),
                 'mode': self._get_cookie('mod', 'intl'),
                 'lang': self._get_cookie('lang', 'en_us'),
                 'bid_list': '[' + ','.join(['0', *self._BID_TAGS.keys()]) + ']',
+                'ut_list': '[' + ','.join(ut_list) + ']',
                 'cmd5x_func': self._extract_cmd5x_function(webpage, video_id),
             })[1].strip(), video_id)
 
@@ -590,12 +611,13 @@ class IqIE(InfoExtractor):
             urljoin('https://cache-video.iq.com', dash_paths['0']), video_id,
             note='Downloading initial video format info', errnote='Unable to download initial video format info')['data']
 
-        preview_time = traverse_obj(initial_format_data, ('boss_ts', 'data', 'previewTime'), expected_type=float_or_none)
-        if preview_time:
-            self.report_warning(f'This preview video is limited to {preview_time} seconds')
+        preview_time = traverse_obj(
+            initial_format_data, ('boss_ts', (None, 'data'), ('previewTime', 'rtime')), expected_type=float_or_none, get_all=False)
+        if traverse_obj(initial_format_data, ('boss_ts', 'data', 'prv'), expected_type=int_or_none):
+            self.report_warning('This preview video is limited%s' % format_field(preview_time, None, ' to %s seconds'))
 
         # TODO: Extract audio-only formats
-        for bid in set(traverse_obj(initial_format_data, ('program', 'video', ..., 'bid'), expected_type=str_or_none, default=[])):
+        for bid in set(traverse_obj(initial_format_data, ('program', 'video', ..., 'bid'), expected_type=str_or_none)):
             dash_path = dash_paths.get(bid)
             if not dash_path:
                 self.report_warning(f'Unknown format id: {bid}. It is currently not being extracted')
@@ -605,8 +627,8 @@ class IqIE(InfoExtractor):
                 note=f'Downloading format data for {self._BID_TAGS[bid]}', errnote='Unable to download format data',
                 fatal=False), 'data', expected_type=dict)
 
-            video_format = next((video_format for video_format in traverse_obj(
-                format_data, ('program', 'video', ...), expected_type=dict, default=[]) if str(video_format['bid']) == bid), {})
+            video_format = traverse_obj(format_data, ('program', 'video', lambda _, v: str(v['bid']) == bid),
+                                        expected_type=dict, get_all=False) or {}
             extracted_formats = []
             if video_format.get('m3u8Url'):
                 extracted_formats.extend(self._extract_m3u8_formats(
@@ -647,9 +669,7 @@ class IqIE(InfoExtractor):
                 })
             formats.extend(extracted_formats)
 
-        self._sort_formats(formats)
-
-        for sub_format in traverse_obj(initial_format_data, ('program', 'stl', ...), expected_type=dict, default=[]):
+        for sub_format in traverse_obj(initial_format_data, ('program', 'stl', ...), expected_type=dict):
             lang = self._LID_TAGS.get(str_or_none(sub_format.get('lid')), sub_format.get('_name'))
             subtitles.setdefault(lang, []).extend([{
                 'ext': format_ext,
