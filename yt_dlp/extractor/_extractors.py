@@ -1260,6 +1260,7 @@ from .nhk import (
     NhkForSchoolProgramListIE,
     NhkRadioNewsPageIE,
     NhkRadiruIE,
+    NhkRadiruLiveIE,
 )
 from .nhl import NHLIE
 from .nick import (
@@ -2426,7 +2427,10 @@ from .yandexvideo import (
     ZenYandexChannelIE,
 )
 from .yapfiles import YapFilesIE
-from .yappy import YappyIE
+from .yappy import (
+    YappyIE,
+    YappyProfileIE,
+)
 from .yesjapan import YesJapanIE
 from .yinyuetai import YinYueTaiIE
 from .yle_areena import YleAreenaIE
