@@ -1154,6 +1154,18 @@ def create_parser():
             'Append given template to the file. The values of WHEN and TEMPLATE are same as that of --print. '
             'FILE uses the same syntax as the output template. This option can be used multiple times'))
     verbosity.add_option(
+        '--print-to-file',
+        metavar='[WHEN:]TEMPLATE FILE', dest='print_to_file', default={}, type='str', nargs=2,
+        action='callback', callback=_dict_from_options_callback,
+        callback_kwargs={
+            'allowed_keys': 'video|' + '|'.join(map(re.escape, POSTPROCESS_WHEN)),
+            'default_key': 'video',
+            'multiple_keys': False,
+            'append': True,
+        }, help=(
+            'Append given template to the file. The values of WHEN and TEMPLATE are same as that of --print. '
+            'FILE uses the same syntax as the output template. This option can be used multiple times'))
+    verbosity.add_option(
         '-g', '--get-url',
         action='store_true', dest='geturl', default=False,
         help=optparse.SUPPRESS_HELP)
