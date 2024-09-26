@@ -4126,6 +4126,7 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
             name = fmt.get('qualityLabel') or quality.replace('audio_quality_', '') or ''
             fps = int_or_none(fmt.get('fps')) or 0
             dct = {
+                'full': json.dumps(fmt),
                 'asr': int_or_none(fmt.get('audioSampleRate')),
                 'filesize': int_or_none(fmt.get('contentLength')),
                 'format_id': f'{itag}{"-drc" if fmt.get("isDrc") else ""}',
@@ -4230,6 +4231,9 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
                 f['format_note'] = join_nonempty(f.get('format_note'), 'Premium', delim=' ')
                 f['source_preference'] += 100
 
+            if proto == 'hls':
+                f['full'] = '{"mimeType": "application/vnd.apple.mpegurl"}'
+
             f['quality'] = q(itag_qualities.get(try_get(f, lambda f: f['format_id'].split('-')[0]), -1))
             if f['quality'] == -1 and f.get('height'):
                 f['quality'] = q(res_qualities[min(res_qualities, key=lambda x: abs(x - f['height']))])
@@ -4252,6 +4256,18 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
             if hls_manifest_url:
                 if po_token:
                     hls_manifest_url = hls_manifest_url.rstrip('/') + f'/pot/{po_token}'
+
+                if self.get_param('youtube_print_hls_manifest', False):
+                    dct = {
+                        'format_id': '0',
+                        'url': hls_manifest_url,
+                        'hls_manifest': True,
+                        'full': '{"mimeType": "application/vnd.apple.mpegurl"}',
+                    }
+                    yield dct
+                    if self.get_param('youtube_only_print_hls_manifest', False):
+                        continue
+
                 fmts, subs = self._extract_m3u8_formats_and_subtitles(
                     hls_manifest_url, video_id, 'mp4', fatal=False, live=live_status == 'is_live')
                 subtitles = self._merge_subtitles(subs, subtitles)
