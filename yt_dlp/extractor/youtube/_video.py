@@ -3664,6 +3664,7 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
                         if process_manifest_format(f, 'hls', client_name, self._search_regex(
                                 r'/itag/(\d+)', f['url'], 'itag', default=None), require_po_token and not po_token):
                             yield f
+            
             dash_manifest_url = 'dash' not in skip_manifests and sd.get('dashManifestUrl')
             if dash_manifest_url:
                 pot_policy: GvsPoTokenPolicy = self._get_default_ytcfg(
