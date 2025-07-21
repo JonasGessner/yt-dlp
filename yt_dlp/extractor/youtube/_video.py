@@ -3501,6 +3501,7 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
             name = fmt.get('qualityLabel') or quality.replace('audio_quality_', '') or ''
             fps = int_or_none(fmt.get('fps')) or 0
             dct = {
+                'full': json.dumps(fmt),
                 'asr': int_or_none(fmt.get('audioSampleRate')),
                 'filesize': int_or_none(fmt.get('contentLength')),
                 'format_id': f'{itag}{"-drc" if fmt.get("isDrc") else ""}',
@@ -3606,6 +3607,9 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
                 f['format_note'] = join_nonempty(f.get('format_note'), 'Premium', delim=' ')
                 f['source_preference'] += 100
 
+            if proto == 'hls':
+                f['full'] = '{"mimeType": "application/vnd.apple.mpegurl"}'
+
             f['quality'] = q(itag_qualities.get(try_get(f, lambda f: f['format_id'].split('-')[0]), -1))
             if f['quality'] == -1 and f.get('height'):
                 f['quality'] = q(res_qualities[min(res_qualities, key=lambda x: abs(x - f['height']))])
@@ -3637,6 +3641,15 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
                     hls_manifest_url = hls_manifest_url.rstrip('/') + f'/pot/{po_token}'
                     if client_name not in gvs_pots:
                         gvs_pots[client_name] = po_token
+                
+                dct = {
+                    'format_id': '0',
+                    'url': hls_manifest_url,
+                    'hls_manifest': True,
+                    'full': '{"mimeType": "application/vnd.apple.mpegurl"}',
+                }
+                yield dct
+                
                 if require_po_token and not po_token and 'missing_pot' not in self._configuration_arg('formats'):
                     self._report_pot_format_skipped(video_id, client_name, 'hls')
                 else:
@@ -3651,7 +3664,6 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
                         if process_manifest_format(f, 'hls', client_name, self._search_regex(
                                 r'/itag/(\d+)', f['url'], 'itag', default=None), require_po_token and not po_token):
                             yield f
-
             dash_manifest_url = 'dash' not in skip_manifests and sd.get('dashManifestUrl')
             if dash_manifest_url:
                 pot_policy: GvsPoTokenPolicy = self._get_default_ytcfg(
