@@ -3263,6 +3263,7 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
                 name = fmt_stream.get('qualityLabel') or quality.replace('audio_quality_', '') or ''
                 fps = int_or_none(fmt_stream.get('fps')) or 0
                 dct = {
+                    'full': fmt_stream,
                     'asr': int_or_none(fmt_stream.get('audioSampleRate')),
                     'filesize': int_or_none(fmt_stream.get('contentLength')),
                     'format_id': join_nonempty(itag, (
